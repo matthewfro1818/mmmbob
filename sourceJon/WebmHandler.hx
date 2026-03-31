@@ -13,6 +13,8 @@ class WebmHandler
 	public var vidPath:String = "";
 	public var io:WebmIo;
 	public var initialized:Bool = false;
+	public var wasHitOnce:Bool = false;
+	public var renderedCount:Float = 0;
 	
 	public function new()
 	{
@@ -29,8 +31,7 @@ class WebmHandler
 	public function makePlayer():Void
 	{
 		io = new WebmIoFile(vidPath);
-		webm = new WebmPlayer();
-		webm.fuck(io, false);
+		webm = new WebmPlayer(io, false);
 		webm.addEventListener(WebmEvent.PLAY, function(e) {
 			onPlay();
 		});
@@ -49,8 +50,11 @@ class WebmHandler
 	
 	public function updatePlayer():Void
 	{
-		io = new WebmIoFile(vidPath);
-		webm.fuck(io, false);
+		if (webm != null && webm.parent != null)
+			webm.parent.removeChild(webm);
+
+		initialized = false;
+		makePlayer();
 	}
 	
 	public function play():Void
@@ -79,6 +83,12 @@ class WebmHandler
 	
 	public function update(elapsed:Float)
 	{
+		if (webm != null)
+		{
+			wasHitOnce = true;
+			renderedCount += elapsed * 60;
+		}
+
 		webm.x = GlobalVideo.calc(0);
 		webm.y = GlobalVideo.calc(1);
 		webm.width = GlobalVideo.calc(2);
@@ -93,13 +103,13 @@ class WebmHandler
 	
 	public function pause():Void
 	{
-		webm.changePlaying(false);
+		webm.stop();
 		paused = true;
 	}
 	
 	public function resume():Void
 	{
-		webm.changePlaying(true);
+		webm.play();
 		paused = false;
 	}
 	
@@ -116,7 +126,6 @@ class WebmHandler
 	public function clearPause():Void
 	{
 		paused = false;
-		webm.removePause();
 	}
 	
 	public function onStop():Void
@@ -126,11 +135,14 @@ class WebmHandler
 	
 	public function onRestart():Void
 	{
+		renderedCount = 0;
+		wasHitOnce = false;
 		restarted = true;
 	}
 	
 	public function onPlay():Void
 	{
+		wasHitOnce = true;
 		played = true;
 	}
 	

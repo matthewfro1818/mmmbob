@@ -9,7 +9,7 @@ import flixel.text.FlxText;
 import flixel.util.FlxColor;
 import flixel.util.FlxTimer;
 import lime.app.Application;
-import flixel.system.FlxSound;
+import flixel.sound.FlxSound;
 import openfl.utils.Assets;
 import openfl.utils.AssetType;
 
@@ -116,8 +116,8 @@ class VideoState extends MusicBeatState
 		
 		if (useSound)
 		{
-			var wasFuckingHit = GlobalVideo.get().webm.wasHitOnce;
-			soundMultiplier = GlobalVideo.get().webm.renderedCount / videoFrames;
+			var wasFuckingHit = GlobalVideo.get().wasHitOnce;
+			soundMultiplier = GlobalVideo.get().renderedCount / videoFrames;
 			
 			if (soundMultiplier > 1)
 			{

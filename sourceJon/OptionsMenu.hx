@@ -29,6 +29,7 @@ class OptionsMenu extends MusicBeatState
 		]),
 		new OptionCatagory("Gameplay", [
 			new DFJKOption(controls),
+			new BotplayOption("Let the game hit your notes automatically."),
 			new Judgement("Customize your Hit Timings (LEFT or RIGHT)"),
 			#if !html
 			new FPSCapOption("Cap your FPS (Left for -10, Right for +10. SHIFT to go faster)"),

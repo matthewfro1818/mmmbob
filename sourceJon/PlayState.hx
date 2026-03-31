@@ -26,7 +26,7 @@ import flixel.group.FlxGroup.FlxTypedGroup;
 import flixel.math.FlxMath;
 import flixel.math.FlxPoint;
 import flixel.math.FlxRect;
-import flixel.system.FlxSound;
+import flixel.sound.FlxSound;
 import flixel.text.FlxText;
 import flixel.tweens.FlxEase;
 import flixel.tweens.FlxTween;
@@ -259,6 +259,9 @@ class PlayState extends MusicBeatState
 		DiscordClient.changePresence(detailsText + " " + SONG.song + " (" + storyDifficultyText + ") " + generateRanking(), "\nAcc: " + truncateFloat(accuracy, 2) + "% | Score: " + songScore + " | Misses: " + misses  , iconRPC);
 		#end
 
+		if (FlxG.save.data.botplay)
+			SONG.validScore = false;
+
 
 		// var gameCam:FlxCamera = FlxG.camera;
 		camGame = new FlxCamera();
@@ -268,7 +271,7 @@ class PlayState extends MusicBeatState
 		FlxG.cameras.reset(camGame);
 		FlxG.cameras.add(camHUD);
 
-		FlxCamera.defaultCameras = [camGame];
+		FlxG.cameras.setDefaultDrawTarget(camGame, true);
 
 		persistentUpdate = true;
 		persistentDraw = true;
@@ -1086,10 +1089,10 @@ class PlayState extends MusicBeatState
 			scoreTxt.x += 300;
 		add(scoreTxt);
 
-		replayTxt = new FlxText(healthBarBG.x + healthBarBG.width / 2 - 75, healthBarBG.y + (FlxG.save.data.downscroll ? 100 : -100), 0, "REPLAY", 20);
+		replayTxt = new FlxText(healthBarBG.x + healthBarBG.width / 2 - 75, healthBarBG.y + (FlxG.save.data.downscroll ? 100 : -100), 0, loadRep ? "REPLAY" : "BOTPLAY", 20);
 		replayTxt.setFormat(Paths.font("vcr.ttf"), 42, FlxColor.WHITE, RIGHT, FlxTextBorderStyle.OUTLINE,FlxColor.BLACK);
 		replayTxt.scrollFactor.set();
-		if (loadRep)
+		if (loadRep || FlxG.save.data.botplay)
 			{
 				add(replayTxt);
 			}
@@ -1116,7 +1119,7 @@ class PlayState extends MusicBeatState
 			songPosBar.cameras = [camHUD];
 		}
 		kadeEngineWatermark.cameras = [camHUD];
-		if (loadRep)
+		if (loadRep || FlxG.save.data.botplay)
 			replayTxt.cameras = [camHUD];
 		// if (SONG.song == 'South')
 		// FlxG.camera.alpha = 0.7;
@@ -3055,6 +3058,30 @@ class PlayState extends MusicBeatState
 
 	private function keyShit():Void
 	{
+		if (FlxG.save.data.botplay && !loadRep)
+		{
+			notes.forEachAlive(function(daNote:Note)
+			{
+				if (daNote.mustPress && daNote.canBeHit && (daNote.isSustainNote || daNote.strumTime <= Conductor.songPosition))
+				{
+					goodNoteHit(daNote);
+				}
+			});
+
+			playerStrums.forEach(function(spr:FlxSprite)
+			{
+				if (spr.animation.curAnim.name == 'confirm' && !curStage.startsWith('school'))
+				{
+					spr.centerOffsets();
+					spr.offset.x -= 13;
+					spr.offset.y -= 13;
+				}
+				else
+					spr.centerOffsets();
+			});
+			return;
+		}
+
 		// HOLDING
 		var up = controls.UP;
 		var right = controls.RIGHT;
@@ -3596,6 +3623,7 @@ class PlayState extends MusicBeatState
 						totalNotesHit += 1;
 					if (!note.warning)
 					{
+						boyfriend.holdTimer = 0;
 						switch (note.noteData)
 						{
 							case 2:
