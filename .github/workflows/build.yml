@@ -1,0 +1,127 @@
+name: Build Game
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            runner: windows-latest
+            target: windows
+            build_args: ""
+            export_glob: exportJon/release/windows/**
+            artifact_name: BOB-windows
+            needs_webm: true
+            webm_rebuild_args: windows -64
+          - name: Linux
+            runner: ubuntu-latest
+            target: linux
+            build_args: ""
+            export_glob: exportJon/release/linux/**
+            artifact_name: BOB-linux
+            needs_webm: true
+            webm_rebuild_args: linux -64
+          - name: macOS
+            runner: macos-latest
+            target: mac
+            build_args: ""
+            export_glob: exportJon/release/mac*/**
+            artifact_name: BOB-macos
+            needs_webm: true
+            webm_rebuild_args: mac -64
+          - name: Android
+            runner: ubuntu-latest
+            target: android
+            build_args: "-debug"
+            export_glob: exportJon/debug/android/**
+            artifact_name: BOB-android
+            needs_webm: false
+          - name: iOS Simulator
+            runner: macos-latest
+            target: ios
+            build_args: "-simulator -debug"
+            export_glob: exportJon/debug/ios/**
+            artifact_name: BOB-ios-simulator
+            needs_webm: false
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Haxe
+        uses: krdlab/setup-haxe@v1
+        with:
+          haxe-version: 4.1.5
+
+      - name: Set up Java
+        if: matrix.target == 'android'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        if: matrix.target == 'android'
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android SDK licenses
+        if: matrix.target == 'android'
+        shell: bash
+        run: yes | sdkmanager --licenses
+
+      - name: Set up haxelib repository
+        shell: pwsh
+        run: |
+          $haxelibPath = Join-Path $env:RUNNER_TEMP "haxelib"
+          New-Item -ItemType Directory -Force -Path $haxelibPath | Out-Null
+          $haxelibPath | haxelib setup
+
+      - name: Install Haxe dependencies
+        shell: pwsh
+        run: |
+          haxelib install lime 7.9.0 --quiet
+          haxelib install openfl --quiet
+          haxelib install flixel --quiet
+          haxelib run lime setup flixel
+          haxelib run lime setup
+          haxelib install flixel-tools --quiet
+          haxelib install flixel-addons --quiet
+          haxelib install flixel-ui --quiet
+          haxelib install hscript --quiet
+          haxelib install actuate --quiet
+          haxelib install newgrounds --quiet
+          haxelib git polymod https://github.com/larsiusprime/polymod.git
+          haxelib git discord_rpc https://github.com/Aidan63/linc_discord-rpc
+
+      - name: Install extension-webm
+        if: matrix.needs_webm
+        shell: pwsh
+        run: |
+          haxelib install extension-webm --quiet
+          haxelib run lime rebuild extension-webm ${{ matrix.webm_rebuild_args }}
+
+      - name: Show installed libraries
+        shell: pwsh
+        run: haxelib list
+
+      - name: Build target
+        shell: pwsh
+        run: haxelib run lime build ${{ matrix.target }} ${{ matrix.build_args }}
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.export_glob }}
+          if-no-files-found: error

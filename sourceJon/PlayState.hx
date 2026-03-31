@@ -44,6 +44,12 @@ import openfl.display.BlendMode;
 import openfl.display.StageQuality;
 import openfl.filters.ShaderFilter;
 
+#if mobile
+import mobile.backend.PauseButton;
+import mobile.controls.MobileHitbox;
+import mobile.flixel.input.FlxMobileInputID;
+#end
+
 #if windows
 import Discord.DiscordClient;
 #end
@@ -136,6 +142,10 @@ class PlayState extends MusicBeatState
 	
 	private var generatedMusic:Bool = false;
 	private var startingSong:Bool = false;
+	
+	#if mobile
+	private var mobileHitbox:MobileHitbox;
+	#end
 
 	private var iconP1:HealthIcon;
 	private var iconP2:HealthIcon;
@@ -272,6 +282,19 @@ class PlayState extends MusicBeatState
 		FlxG.cameras.add(camHUD);
 
 		FlxG.cameras.setDefaultDrawTarget(camGame, true);
+		
+		#if mobile
+		mobileHitbox = new MobileHitbox();
+		mobileHitbox.cameras = [camHUD];
+		add(mobileHitbox);
+		PauseButton.showPauseButtonOnCamera(camHUD, null, function()
+		{
+			if (startedCountdown && canPause && !paused)
+			{
+				openPauseMenu();
+			}
+		});
+		#end
 
 		persistentUpdate = true;
 		persistentDraw = true;
@@ -608,7 +631,7 @@ class PlayState extends MusicBeatState
 			}
 			
 			//phlox is a little baby
-			case 'run' | 'run-remix-because-its-cool' :
+			case 'run' | 'run-remix-because-its-cool' | 'expurgation' :
 			{
 				curStage = 'hellstage';
 				if (FlxG.save.data.happybob)
@@ -2021,6 +2044,23 @@ class PlayState extends MusicBeatState
 		super.closeSubState();
 	}
 	
+	private function openPauseMenu():Void
+	{
+		persistentUpdate = false;
+		persistentDraw = true;
+		paused = true;
+
+		// 1 / 1000 chance for Gitaroo Man easter egg
+		if (FlxG.random.bool(0.1))
+		{
+			FlxG.switchState(new GitarooPause());
+		}
+		else
+		{
+			openSubState(new PauseSubState(boyfriend.getScreenPosition().x, boyfriend.getScreenPosition().y));
+		}
+	}
+	
 
 	function resyncVocals():Void
 	{
@@ -2181,6 +2221,12 @@ class PlayState extends MusicBeatState
 		}
 
 		super.update(elapsed);
+		
+		#if mobile
+		PauseButton.updatePosition();
+		PauseButton.update();
+		#end
+		
 		if (SONG.song.toLowerCase() == 'onslaught' && IsNoteSpinning){
 			var thisX:Float =  Math.sin(SpinAmount * (SpinAmount / 2)) * 100;
 			var thisY:Float =  Math.sin(SpinAmount * (SpinAmount)) * 100;
@@ -2218,18 +2264,7 @@ class PlayState extends MusicBeatState
 		}
 		if (FlxG.keys.justPressed.ENTER && startedCountdown && canPause)
 		{
-			persistentUpdate = false;
-			persistentDraw = true;
-			paused = true;
-
-			// 1 / 1000 chance for Gitaroo Man easter egg
-			if (FlxG.random.bool(0.1))
-			{
-				// gitaroo man easter egg
-				FlxG.switchState(new GitarooPause());
-			}
-			else
-				openSubState(new PauseSubState(boyfriend.getScreenPosition().x, boyfriend.getScreenPosition().y));
+			openPauseMenu();
 		}
 
 		if (FlxG.keys.justPressed.SEVEN)
@@ -3097,6 +3132,26 @@ class PlayState extends MusicBeatState
 		var rightR = controls.RIGHT_R;
 		var downR = controls.DOWN_R;
 		var leftR = controls.LEFT_R;
+		
+		#if mobile
+		if (mobileHitbox != null)
+		{
+			up = up || mobileHitbox.buttonPressed(FlxMobileInputID.noteUP);
+			right = right || mobileHitbox.buttonPressed(FlxMobileInputID.noteRIGHT);
+			down = down || mobileHitbox.buttonPressed(FlxMobileInputID.noteDOWN);
+			left = left || mobileHitbox.buttonPressed(FlxMobileInputID.noteLEFT);
+
+			upP = upP || mobileHitbox.buttonJustPressed(FlxMobileInputID.noteUP);
+			rightP = rightP || mobileHitbox.buttonJustPressed(FlxMobileInputID.noteRIGHT);
+			downP = downP || mobileHitbox.buttonJustPressed(FlxMobileInputID.noteDOWN);
+			leftP = leftP || mobileHitbox.buttonJustPressed(FlxMobileInputID.noteLEFT);
+
+			upR = upR || mobileHitbox.buttonJustReleased(FlxMobileInputID.noteUP);
+			rightR = rightR || mobileHitbox.buttonJustReleased(FlxMobileInputID.noteRIGHT);
+			downR = downR || mobileHitbox.buttonJustReleased(FlxMobileInputID.noteDOWN);
+			leftR = leftR || mobileHitbox.buttonJustReleased(FlxMobileInputID.noteLEFT);
+		}
+		#end
 
 		if (loadRep) // replay code
 		{
@@ -3485,6 +3540,16 @@ class PlayState extends MusicBeatState
 
 			updateAccuracy();
 		}
+	}
+	
+	override public function destroy():Void
+	{
+		#if mobile
+		PauseButton.hidePauseButton();
+		mobileHitbox = null;
+		#end
+		
+		super.destroy();
 	}
 
 	/*function badNoteCheck()
