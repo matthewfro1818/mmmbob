@@ -3097,7 +3097,8 @@ class PlayState extends MusicBeatState
 		{
 			notes.forEachAlive(function(daNote:Note)
 			{
-				if (daNote.mustPress && !daNote.mustHitNotes && daNote.canBeHit && (daNote.isSustainNote || daNote.strumTime <= Conductor.songPosition))
+				// Botplay should avoid warning notes, but still hit normal and required custom notes.
+				if (daNote.mustPress && !daNote.warning && daNote.canBeHit && (daNote.isSustainNote || daNote.strumTime <= Conductor.songPosition))
 				{
 					goodNoteHit(daNote);
 				}
